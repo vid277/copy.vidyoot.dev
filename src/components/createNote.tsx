@@ -1,10 +1,8 @@
 import { Editor } from "primereact/editor";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import ParticleButton from "./submit";
 import { Input } from "./ui/input";
 import { Link, useNavigate } from "react-router";
-import "highlight.js/styles/atom-one-dark.css";
-import hljs from "highlight.js";
 import { Button } from "./ui/button";
 
 const header = (
@@ -104,13 +102,6 @@ const EditorComponent = () => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
   };
-
-  useEffect(() => {
-    // Initialize syntax highlighting
-    if (typeof window !== "undefined") {
-      hljs.highlightAll();
-    }
-  }, []);
 
   const sendNote = async () => {
     await fetch("http://localhost:8080/api/create", {
