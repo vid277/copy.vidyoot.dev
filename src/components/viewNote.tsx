@@ -1,0 +1,45 @@
+import { Editor } from "primereact/editor";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router";
+import { Button } from "./ui/button";
+
+const EditorComponent = () => {
+  const { shortUrl } = useParams();
+  const [text, setText] = useState("");
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(text);
+  };
+
+  useEffect(() => {
+    const getNote = async () => {
+      if (shortUrl) {
+        const response = await fetch(`http://localhost:8080/api/${shortUrl}`);
+        const data = await response.json();
+        setText(data.content);
+      }
+    };
+
+    getNote();
+  }, [shortUrl]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <Button onClick={copyToClipboard} className="text-sm">
+          Copy Content
+        </Button>
+      </div>
+      <Editor
+        className="editor"
+        value={text}
+        readOnly
+        modules={{ toolbar: false }}
+        headerTemplate={<></>}
+        onTextChange={(e) => setText(e?.htmlValue || "")}
+      />
+    </div>
+  );
+};
+
+export default EditorComponent;
