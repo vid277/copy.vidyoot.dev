@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useRef, type RefObject } from "react";
-import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
-import { MousePointerClick } from "lucide-react";
 
-interface ParticleButtonProps extends React.ComponentProps<typeof Button> {
+interface ParticleButtonProps {
   onSuccess?: () => void;
   successDuration?: number;
+  enabled?: boolean;
 }
 
 function SuccessParticles({
@@ -51,19 +50,15 @@ function SuccessParticles({
 }
 
 export default function ParticleButton({
-  children,
-  onClick,
   onSuccess,
   successDuration = 1000,
-  className,
-  ...props
+  enabled = true,
 }: ParticleButtonProps) {
   const [showParticles, setShowParticles] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleClick = async () => {
     setShowParticles(true);
-    onClick?.(e);
     onSuccess?.();
 
     setTimeout(() => {
@@ -78,20 +73,18 @@ export default function ParticleButton({
           buttonRef={buttonRef as RefObject<HTMLButtonElement>}
         />
       )}
-      <Button
+      <button
         ref={buttonRef}
         onClick={handleClick}
         className={cn(
-          "relative",
-          showParticles && "scale-95",
-          "transition-transform duration-100",
-          className,
+          "relative text-sm transition-all duration-200 border-2 px-3 py-3.5 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-md text-white bg-black disabled:opacity-50 disabled:cursor-not-allowed",
+          enabled && "hover:border-black hover:bg-white hover:text-black",
+          showParticles && "duration-100",
         )}
-        {...props}
+        disabled={!enabled}
       >
-        {children}
-        <MousePointerClick className="h-4 w-4" />
-      </Button>
+        {enabled ? "Create Note" : "Please enter a valid URL path"}
+      </button>
     </>
   );
 }

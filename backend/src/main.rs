@@ -1,8 +1,10 @@
 use actix_cors::Cors;
 use actix_web::{App, HttpResponse, HttpServer, middleware::Logger, web};
 use backend::models::{NewNote, Note};
+use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
+use diesel::result::Error as DieselError;
 use dotenvy::dotenv;
 use env_logger::Env;
 use serde::Deserialize;
@@ -96,16 +98,47 @@ async fn create_note(
     use backend::schema::notes::dsl::*;
     let mut connection = pool.get().unwrap();
 
+    let existing_note = notes
+        .filter(short_url.eq(&request.short_url))
+        .select(Note::as_select())
+        .first(&mut connection);
+
+    if existing_note.is_ok() {
+        return HttpResponse::Conflict().json(serde_json::json!({
+            "error": "URL already taken"
+        }));
+    }
+
+    let one_hour_ago = Utc::now() - Duration::hours(1);
+    if let Err(e) =
+        diesel::delete(notes.filter(created_at.lt(one_hour_ago))).execute(&mut connection)
+    {
+        log::error!("Failed to clean up old notes: {}", e);
+    }
+
     let new_note = NewNote {
         short_url: request.short_url.clone(),
         content: request.content.clone(),
     };
 
-    diesel::insert_into(notes)
+    match diesel::insert_into(notes)
         .values(&new_note)
         .returning(Note::as_returning())
         .execute(&mut connection)
-        .unwrap();
-
-    HttpResponse::Ok().body("Note created")
+    {
+        Ok(_) => HttpResponse::Ok().json(serde_json::json!({
+            "message": "Note created successfully"
+        })),
+        Err(DieselError::DatabaseError(diesel::result::DatabaseErrorKind::UniqueViolation, _)) => {
+            HttpResponse::Conflict().json(serde_json::json!({
+                "error": "URL already taken"
+            }))
+        }
+        Err(e) => {
+            log::error!("Failed to create note: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Failed to create note"
+            }))
+        }
+    }
 }

@@ -11,6 +11,8 @@
   padding-bottom: 1rem !important;
   border-radius: 0.5rem 0.5rem 0 0 !important;
   height: max-content !important;
+  border: 1px solid #ccc !important;
+  border-bottom: none !important;
 }
 
 .ql-toolbar.ql-snow + .ql-container.ql-snow {
@@ -19,7 +21,7 @@
 
 .ql-snow {
   width: 70vw !important;
-  height: 50vh !important;
+  height: 70vh !important;
 }
 
 .particle-button {
@@ -31,4 +33,9 @@
   font-weight: 500 !important;
   border-radius: 0.5rem !important;
   transition: all 0.3s ease !important;
+}
+
+.ql-container {
+  border-radius: 0.5rem !important;
+  border: 1px solid #ccc !important;
 }

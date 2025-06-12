@@ -1,7 +1,7 @@
 import { Editor } from "primereact/editor";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
-import { Button } from "./ui/button";
+import { CopyButton } from "./ui/copyButton";
 
 const EditorComponent = () => {
   const { shortUrl } = useParams();
@@ -26,9 +26,7 @@ const EditorComponent = () => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <Button onClick={copyToClipboard} className="text-sm">
-          Copy Content
-        </Button>
+        <CopyButton onClick={copyToClipboard} />
       </div>
       <Editor
         className="editor"

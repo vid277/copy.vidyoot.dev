@@ -1,9 +1,9 @@
 import { Editor } from "primereact/editor";
-import { useState } from "react";
-import ParticleButton from "./submit";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "./ui/input";
-import { Link, useNavigate } from "react-router";
-import { Button } from "./ui/button";
+import { useNavigate } from "react-router";
+import { CopyButton } from "./ui/copyButton";
+import ParticleButton from "./submit";
 
 const header = (
   <span className="ql-formats">
@@ -97,51 +97,128 @@ const header = (
 const EditorComponent = () => {
   const [text, setText] = useState("");
   const [shortUrl, setShortUrl] = useState("");
+  const [isEmpty, setIsEmpty] = useState(true);
+  const [hasInvalidChars, setHasInvalidChars] = useState(false);
+  const [isUrlTaken, setIsUrlTaken] = useState(false);
   const navigate = useNavigate();
 
+  const checkUrlAvailability = useCallback(
+    async (url: string) => {
+      if (!url.trim() || hasInvalidChars) return;
+
+      try {
+        const response = await fetch(`http://localhost:8080/api/${url}`);
+        if (response.ok) {
+          setIsUrlTaken(true);
+        } else {
+          setIsUrlTaken(false);
+        }
+      } catch {
+        setIsUrlTaken(false);
+      }
+    },
+    [hasInvalidChars],
+  );
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (shortUrl.trim()) {
+        checkUrlAvailability(shortUrl);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [shortUrl, checkUrlAvailability]);
+
+  const isValidUrlPath = (path: string) => {
+    return /^[a-zA-Z0-9-_]*$/.test(path);
+  };
+
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setIsEmpty(!value.trim());
+
+    if (!isValidUrlPath(value)) {
+      setHasInvalidChars(true);
+      setIsUrlTaken(false);
+    } else {
+      setHasInvalidChars(false);
+    }
+    setShortUrl(value);
+  };
+
   const copyToClipboard = (text: string) => {
+    if (isEmpty) {
+      return;
+    }
     navigator.clipboard.writeText(text);
   };
 
   const sendNote = async () => {
-    await fetch("http://localhost:8080/api/create", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ content: text, short_url: shortUrl }),
-    });
+    try {
+      const response = await fetch("http://localhost:8080/api/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content: text, short_url: shortUrl }),
+      });
 
-    navigate(`/${shortUrl}`);
+      if (response.status === 409) {
+        setIsUrlTaken(true);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to create note");
+      }
+
+      navigate(`/${shortUrl}`);
+    } catch {
+      // Handle error
+    }
+  };
+
+  const getWarningMessage = () => {
+    if (isEmpty) return "Please enter a URL path";
+    if (hasInvalidChars)
+      return "Only letters, numbers, hyphens, and underscores allowed";
+    if (isUrlTaken) return "This URL is already taken";
+    return "";
   };
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-row items-center gap-4">
-        <span className="text-base font-bold">Link: </span>
-        <Input
-          type="text"
-          className="w-1/4 border-1 border-gray-300 rounded-md active:border-gray-300"
-          value={shortUrl}
-          onChange={(e) => setShortUrl(e.target.value)}
-        />
-        {shortUrl && (
-          <>
-            <Link to={`/${shortUrl}`}>
-              <span className="text-sm text-gray-600">
-                {`http://localhost:8080/${shortUrl}`}
-              </span>
-            </Link>
-            <Button
-              onClick={() =>
-                copyToClipboard(`http://localhost:8080/${shortUrl}`)
-              }
-              className="text-sm"
-            >
-              Copy Link
-            </Button>
-          </>
-        )}
+      <div className="flex flex-col gap-2 justify-center items-center">
+        <div className="flex flex-row justify-center items-center gap-2">
+          <span className="text-base font-bold">Link: </span>
+          <div className="flex flex-row items-center gap-2">
+            <span className="text-sm text-gray-600">
+              http://localhost:8080/
+            </span>
+            <div className="flex flex-row relative">
+              {(isEmpty || hasInvalidChars || isUrlTaken) && (
+                <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-red-500 text-white text-xs px-2 py-1 rounded-md animate-fade-in-out w-max text-center">
+                  {getWarningMessage()}
+                </span>
+              )}
+              <Input
+                type="text"
+                className="border-1 border-gray-300 rounded-md active:border-gray-300 focus-visible:ring-0 focus-visible:ring-offset-0 h-8"
+                value={shortUrl}
+                onChange={handleUrlChange}
+                placeholder="Enter URL path"
+              />
+            </div>
+            <div className="relative">
+              <CopyButton
+                onClick={() =>
+                  copyToClipboard(`http://localhost:8080/${shortUrl}`)
+                }
+              />
+            </div>
+          </div>
+        </div>
       </div>
       <Editor
         value={text}
@@ -150,10 +227,10 @@ const EditorComponent = () => {
         headerTemplate={header}
         style={{ height: "320px" }}
       />
-
-      <ParticleButton onSuccess={sendNote} className="particle-button">
-        Submit
-      </ParticleButton>
+      <ParticleButton
+        onSuccess={sendNote}
+        enabled={!isEmpty && !hasInvalidChars && !isUrlTaken}
+      />
     </div>
   );
 };
