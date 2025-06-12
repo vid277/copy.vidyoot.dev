@@ -12,7 +12,7 @@ pub struct Note {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, AsChangeset)]
 #[diesel(table_name = crate::schema::notes)]
 pub struct NewNote {
     pub short_url: String,

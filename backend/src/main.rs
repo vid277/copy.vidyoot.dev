@@ -50,7 +50,8 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/api")
                     .route("/", web::get().to(index))
                     .route("/create", web::post().to(create_note))
-                    .route("/{short_url}", web::get().to(get_note)),
+                    .route("/{short_url}", web::get().to(get_note))
+                    .route("/{short_url}", web::put().to(update_note)),
             )
     })
     .bind("127.0.0.1:8080")?
@@ -138,6 +139,47 @@ async fn create_note(
             log::error!("Failed to create note: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "Failed to create note"
+            }))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct RequestUpdateNote {
+    pub short_url: String,
+    pub content: String,
+}
+
+async fn update_note(
+    pool: web::Data<DbPool>,
+    request: web::Json<RequestUpdateNote>,
+) -> HttpResponse {
+    use backend::schema::notes::dsl::*;
+    let mut connection = pool.get().unwrap();
+
+    let existing_note = notes
+        .filter(short_url.eq(&request.short_url))
+        .select(Note::as_select())
+        .first(&mut connection);
+
+    if existing_note.is_err() {
+        return HttpResponse::NotFound().json(serde_json::json!({
+            "error": "Note not found"
+        }));
+    }
+
+    match diesel::update(notes)
+        .set(content.eq(&request.content))
+        .filter(short_url.eq(&request.short_url))
+        .execute(&mut connection)
+    {
+        Ok(_) => HttpResponse::Ok().json(serde_json::json!({
+            "message": "Note updated successfully"
+        })),
+        Err(e) => {
+            log::error!("Failed to update note: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Failed to update note"
             }))
         }
     }

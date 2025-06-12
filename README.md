@@ -5,5 +5,3 @@ Simple pastebin clone built using Rust (actix-web, diesel, postgresql) and React
 Todo:
 
 - Notes are encrypted
-- Notes should be able to be deleted after viewed or after a certain time period.
-- Better UI (add headers, etc)
