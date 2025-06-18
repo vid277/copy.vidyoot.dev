@@ -4,4 +4,7 @@ Simple pastebin clone built using Rust (actix-web, diesel, postgresql) and React
 
 Todo:
 
-- Notes are encrypted
+- Return appropriate error for searching if a certain url exists
+- Create custom times that the notes should exist
+  - Start a tokio thread and run a loop
+- Use caddy to host with hetzner
