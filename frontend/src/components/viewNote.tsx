@@ -14,7 +14,7 @@ const EditorComponent = () => {
   useEffect(() => {
     const getNote = async () => {
       if (shortUrl) {
-        const response = await fetch(`http://localhost:8080/api/${shortUrl}`);
+        const response = await fetch(`/api/${shortUrl}`);
         const data = await response.json();
         setText(data.content);
       }

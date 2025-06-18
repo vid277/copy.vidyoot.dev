@@ -107,7 +107,7 @@ const EditorComponent = () => {
       if (!url.trim() || hasInvalidChars) return;
 
       try {
-        const response = await fetch(`http://localhost:8080/api/${url}`);
+        const response = await fetch(`/api/${url}`);
         if (response.ok) {
           setIsUrlTaken(true);
         } else {
@@ -156,7 +156,7 @@ const EditorComponent = () => {
 
   const sendNote = async () => {
     try {
-      const response = await fetch("http://localhost:8080/api/create", {
+      const response = await fetch("/api/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -194,7 +194,7 @@ const EditorComponent = () => {
           <span className="text-base font-bold">Link: </span>
           <div className="flex flex-row items-center gap-2">
             <span className="text-sm text-gray-600">
-              http://localhost:8080/
+              {window.location.origin}/
             </span>
             <div className="flex flex-row relative">
               {(isEmpty || hasInvalidChars || isUrlTaken) && (
@@ -213,7 +213,7 @@ const EditorComponent = () => {
             <div className="relative">
               <CopyButton
                 onClick={() =>
-                  copyToClipboard(`http://localhost:8080/${shortUrl}`)
+                  copyToClipboard(`${window.location.origin}/${shortUrl}`)
                 }
               />
             </div>

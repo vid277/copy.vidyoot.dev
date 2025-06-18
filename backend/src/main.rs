@@ -33,7 +33,7 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init_from_env(Env::new().default_filter_or("info"));
 
-    println!("Starting server on port 127.0.0.1:8080");
+    println!("Starting server on port 0.0.0.0:8080");
 
     HttpServer::new(move || {
         let cors = Cors::default()
@@ -54,22 +54,38 @@ async fn main() -> std::io::Result<()> {
                     .route("/{short_url}", web::put().to(update_note)),
             )
     })
-    .bind("127.0.0.1:8080")?
+    .bind("0.0.0.0:8080")?
     .run()
     .await
 }
 
 async fn index(pool: web::Data<DbPool>) -> HttpResponse {
     use backend::schema::notes::dsl::*;
-    let mut connection = pool.get().unwrap();
+    let mut connection = match pool.get() {
+        Ok(conn) => conn,
+        Err(e) => {
+            log::error!("Failed to get database connection: {}", e);
+            return HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Database connection error"
+            }));
+        }
+    };
 
-    let my_note = notes
+    let result = notes
         .limit(10)
         .select(Note::as_select())
-        .load(&mut connection)
-        .unwrap();
+        .load::<Note>(&mut connection)
+        .map_err(|e| {
+            log::error!("Failed to get notes: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Failed to get notes"
+            }))
+        });
 
-    HttpResponse::Ok().body(format!("{:?}", my_note))
+    match result {
+        Ok(notes_list) => HttpResponse::Ok().json(notes_list),
+        Err(response) => response,
+    }
 }
 
 #[derive(Deserialize)]
@@ -81,15 +97,32 @@ pub struct RequestCreateNote {
 async fn get_note(pool: web::Data<DbPool>, short_url_path: web::Path<String>) -> HttpResponse {
     use backend::schema::notes::dsl::*;
 
-    let mut connection = pool.get().unwrap();
+    let mut connection = match pool.get() {
+        Ok(conn) => conn,
+        Err(e) => {
+            log::error!("Failed to get database connection: {}", e);
+            return HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Database connection error"
+            }));
+        }
+    };
 
-    let note = notes
+    match notes
         .filter(short_url.eq(short_url_path.into_inner()))
         .select(Note::as_select())
         .first(&mut connection)
-        .unwrap();
-
-    HttpResponse::Ok().json(note)
+    {
+        Ok(note) => HttpResponse::Ok().json(note),
+        Err(DieselError::NotFound) => HttpResponse::NotFound().json(serde_json::json!({
+            "error": "Note not found"
+        })),
+        Err(e) => {
+            log::error!("Failed to get note: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Failed to get note"
+            }))
+        }
+    }
 }
 
 async fn create_note(
