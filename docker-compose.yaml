@@ -4,10 +4,10 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "80:80" # nginx port
-      - "8080:8080" # backend port
+      - "8080:8080"
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/notes
       - RUST_LOG=info
     depends_on:
       - db
