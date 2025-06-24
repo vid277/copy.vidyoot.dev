@@ -98,9 +98,8 @@ const EditorComponent = () => {
 
   return (
     <div className="flex flex-col gap-4 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
-      <div className="flex justify-between items-center gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-base font-bold">Link: </span>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <span className="text-sm text-gray-600 break-all max-w-xs">
             {currentUrl}
           </span>
@@ -109,7 +108,7 @@ const EditorComponent = () => {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto justify-center">
           <div className="relative">
             {copiedType === "rich" && (
               <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded-md animate-fade-in-out">
