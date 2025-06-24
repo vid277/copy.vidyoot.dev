@@ -31,6 +31,33 @@ pub fn get_connection_pool() -> DbPool {
 async fn main() -> std::io::Result<()> {
     let pool = get_connection_pool();
 
+    let delete_pool = pool.clone();
+
+    tokio::spawn(async move {
+        use backend::schema::notes::dsl::*;
+        loop {
+            let mut conn = match delete_pool.get() {
+                Ok(c) => c,
+                Err(e) => {
+                    log::error!("Delete: failed to get DB connection: {}", e);
+                    tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                    continue;
+                }
+            };
+            let now = chrono::Utc::now();
+            match diesel::delete(notes.filter(expires_at.is_not_null().and(expires_at.lt(now))))
+                .execute(&mut conn)
+            {
+                Ok(count) if count > 0 => log::info!("Delete: deleted {} expired notes", count),
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("Delete: failed to delete expired notes: {}", e);
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        }
+    });
+
     env_logger::init_from_env(Env::new().default_filter_or("info"));
 
     println!("Starting server on port 0.0.0.0:8080");
@@ -93,6 +120,7 @@ async fn index(pool: web::Data<DbPool>) -> HttpResponse {
 pub struct RequestCreateNote {
     pub short_url: String,
     pub content: String,
+    pub expires_at: Option<String>,
 }
 
 async fn get_note(pool: web::Data<DbPool>, short_url_path: web::Path<String>) -> HttpResponse {
@@ -151,9 +179,17 @@ async fn create_note(
         log::error!("Failed to clean up old notes: {}", e);
     }
 
+    let expires_at_time = match &request.expires_at {
+        Some(s) => chrono::DateTime::parse_from_rfc3339(s)
+            .ok()
+            .map(|dt| dt.with_timezone(&Utc)),
+        None => None,
+    };
+
     let new_note = NewNote {
         short_url: request.short_url.clone(),
         content: request.content.clone(),
+        expires_at: expires_at_time,
     };
 
     match diesel::insert_into(notes)

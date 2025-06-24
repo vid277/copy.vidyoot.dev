@@ -10,6 +10,7 @@ pub struct Note {
     pub short_url: String,
     pub content: String,
     pub created_at: DateTime<Utc>,
+    pub expires_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Insertable, AsChangeset)]
@@ -17,4 +18,5 @@ pub struct Note {
 pub struct NewNote {
     pub short_url: String,
     pub content: String,
+    pub expires_at: Option<DateTime<Utc>>,
 }

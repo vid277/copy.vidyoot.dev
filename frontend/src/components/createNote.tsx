@@ -101,6 +101,7 @@ const EditorComponent = () => {
   const [isEmpty, setIsEmpty] = useState(true);
   const [hasInvalidChars, setHasInvalidChars] = useState(false);
   const [isUrlTaken, setIsUrlTaken] = useState(false);
+  const [expiration, setExpiration] = useState("30m");
   const navigate = useNavigate();
 
   const checkUrlAvailability = useCallback(
@@ -157,13 +158,32 @@ const EditorComponent = () => {
   };
 
   const sendNote = async () => {
+    let expires_at = null;
+    if (expiration !== "never") {
+      const now = new Date();
+      const minutes: number =
+        {
+          "5m": 5,
+          "10m": 10,
+          "15m": 15,
+          "30m": 30,
+          "1h": 60,
+          "1d": 24 * 60,
+        }[expiration] || 30;
+
+      expires_at = new Date(now.getTime() + minutes * 60 * 1000).toISOString();
+    }
     try {
       const response = await fetch("/api/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ content: text, short_url: shortUrl }),
+        body: JSON.stringify({
+          content: text,
+          short_url: shortUrl,
+          expires_at,
+        }),
       });
 
       if (response.status === 409) {
@@ -220,6 +240,22 @@ const EditorComponent = () => {
               />
             </div>
           </div>
+        </div>
+        <div className="flex flex-row items-center gap-2 mt-2">
+          <span className="text-sm font-semibold">Delete after:</span>
+          <select
+            className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+            value={expiration}
+            onChange={(e) => setExpiration(e.target.value)}
+          >
+            <option value="5m">5 min</option>
+            <option value="10m">10 min</option>
+            <option value="15m">15 min</option>
+            <option value="30m">30 min</option>
+            <option value="1h">1 hour</option>
+            <option value="1d">1 day</option>
+            <option value="never">Never</option>
+          </select>
         </div>
       </div>
       <Editor

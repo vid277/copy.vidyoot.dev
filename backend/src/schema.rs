@@ -6,5 +6,6 @@ diesel::table! {
         short_url -> Text,
         content -> Text,
         created_at -> Timestamptz,
+        expires_at -> Nullable<Timestamptz>,
     }
 }
