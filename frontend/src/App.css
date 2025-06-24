@@ -20,8 +20,8 @@
 }
 
 .ql-snow {
-  width: 70vw !important;
-  height: 70vh !important;
+  width: 100% !important;
+  height: 70% !important;
 }
 
 .particle-button {
@@ -38,4 +38,5 @@
 .ql-container {
   border-radius: 0.5rem !important;
   border: 1px solid #ccc !important;
+  min-height: 700px !important;
 }

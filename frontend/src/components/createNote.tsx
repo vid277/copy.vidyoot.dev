@@ -190,7 +190,7 @@ const EditorComponent = () => {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 p-12 pt-16 lg:px-8">
       <div className="flex flex-col gap-2 justify-center items-center">
         <div className="flex flex-row justify-center items-center gap-2">
           <span className="text-base font-bold">Link: </span>
