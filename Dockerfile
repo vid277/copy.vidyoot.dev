@@ -9,11 +9,11 @@ RUN cargo install diesel_cli --no-default-features --features postgres
 FROM node:20-slim AS frontend-builder
 
 WORKDIR /usr/src/app
-COPY ./frontend/package*.json ./
-RUN npm install
+COPY ./frontend/package*.json ./frontend/yarn.lock ./
+RUN yarn install --frozen-lockfile
 
 COPY ./frontend .
-RUN npm run build
+RUN yarn build
 
 FROM debian:bookworm-slim
 
