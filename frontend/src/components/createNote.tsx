@@ -12,6 +12,7 @@ const header = (
       style={{
         width: "120px",
       }}
+      defaultValue=""
     >
       <option value="1">Heading 1</option>
       <option value="2">Heading 2</option>
@@ -31,23 +32,23 @@ const header = (
         paddingLeft: "8px",
       }}
     >
-      <select className="ql-color">
+      <select className="ql-color" defaultValue="">
         <option value="red" />
         <option value="green" />
         <option value="blue" />
         <option value="orange" />
         <option value="violet" />
         <option value="#d0d0d0" />
-        <option selected />
+        <option value="" />
       </select>
-      <select className="ql-background">
+      <select className="ql-background" defaultValue="">
         <option value="red" />
         <option value="green" />
         <option value="blue" />
         <option value="orange" />
         <option value="violet" />
         <option value="#d0d0d0" />
-        <option selected />
+        <option value="" />
       </select>
     </span>
     <span
@@ -84,8 +85,8 @@ const header = (
         paddingLeft: "8px",
       }}
     >
-      <select className="ql-align">
-        <option selected />
+      <select className="ql-align" defaultValue="">
+        <option value="" />
         <option value="center" />
         <option value="right" />
         <option value="justify" />
@@ -107,9 +108,10 @@ const EditorComponent = () => {
       if (!url.trim() || hasInvalidChars) return;
 
       try {
-        const response = await fetch(`/api/${url}`);
+        const response = await fetch(`/api/check/${url}`);
         if (response.ok) {
-          setIsUrlTaken(true);
+          const data = await response.json();
+          setIsUrlTaken(!data.available);
         } else {
           setIsUrlTaken(false);
         }

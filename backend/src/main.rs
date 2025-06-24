@@ -50,6 +50,7 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/api")
                     .route("/", web::get().to(index))
                     .route("/create", web::post().to(create_note))
+                    .route("/check/{short_url}", web::get().to(check_url_availability))
                     .route("/{short_url}", web::get().to(get_note))
                     .route("/{short_url}", web::put().to(update_note)),
             )
@@ -213,6 +214,43 @@ async fn update_note(
             log::error!("Failed to update note: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "Failed to update note"
+            }))
+        }
+    }
+}
+
+async fn check_url_availability(
+    pool: web::Data<DbPool>,
+    short_url_path: web::Path<String>,
+) -> HttpResponse {
+    use backend::schema::notes::dsl::*;
+
+    let mut connection = match pool.get() {
+        Ok(conn) => conn,
+        Err(e) => {
+            log::error!("Failed to get database connection: {}", e);
+            return HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Database connection error"
+            }));
+        }
+    };
+
+    let existing_note = notes
+        .filter(short_url.eq(short_url_path.into_inner()))
+        .select(Note::as_select())
+        .first(&mut connection);
+
+    match existing_note {
+        Ok(_) => HttpResponse::Ok().json(serde_json::json!({
+            "available": false
+        })),
+        Err(DieselError::NotFound) => HttpResponse::Ok().json(serde_json::json!({
+            "available": true
+        })),
+        Err(e) => {
+            log::error!("Failed to check URL availability: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Failed to check URL availability"
             }))
         }
     }
