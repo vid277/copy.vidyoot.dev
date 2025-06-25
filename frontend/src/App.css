@@ -3,7 +3,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  overflow-y: scroll;
+  padding-bottom: 1rem;
 }
 
 .ql-toolbar.ql-snow {
@@ -21,7 +22,7 @@
 
 .ql-snow {
   width: 100% !important;
-  height: 70% !important;
+  height: 100% !important;
 }
 
 .particle-button {

@@ -97,10 +97,10 @@ const EditorComponent = () => {
   }
 
   return (
-    <div className="flex flex-col gap-4 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <span className="text-sm text-gray-600 break-all max-w-xs">
+    <div className="flex flex-col gap-4 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12 ">
+      <div className="flex flex-col sm:flex-row justify-center items-start sm:items-center gap-4">
+        <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
+          <span className="text-sm text-gray-600 break-all max-w-xs justify-center">
             {currentUrl}
           </span>
           <div className="relative">

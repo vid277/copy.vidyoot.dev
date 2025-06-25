@@ -213,7 +213,6 @@ const EditorComponent = () => {
     <div className="flex flex-col gap-4 p-9 pt-16 lg:px-8">
       <div className="flex flex-col gap-2 justify-center items-center">
         <div className="flex flex-row justify-center items-center gap-2">
-          <span className="text-base font-bold">Link: </span>
           <div className="flex flex-row items-center gap-2">
             <span className="text-sm text-gray-600">
               {window.location.origin}/
@@ -244,9 +243,10 @@ const EditorComponent = () => {
         <div className="flex flex-row items-center gap-2 mt-2">
           <span className="text-sm font-semibold">Delete after:</span>
           <select
-            className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+            className="border border-gray-300 rounded-md px-1 py-1 text-sm"
             value={expiration}
             onChange={(e) => setExpiration(e.target.value)}
+            name="expiration"
           >
             <option value="5m">5 min</option>
             <option value="10m">10 min</option>
