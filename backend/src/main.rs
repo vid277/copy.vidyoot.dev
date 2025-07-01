@@ -80,6 +80,7 @@ async fn main() -> std::io::Result<()> {
                     .route("/check/{short_url}", web::get().to(check_url_availability))
                     .route("/{short_url}", web::get().to(get_note))
                     .route("/{short_url}", web::put().to(update_note))
+                    .route("/versions/{short_url}", web::get().to(get_versions))
                     .route("/threads/{parent_id}", web::get().to(get_threads)),
             )
     })
@@ -230,15 +231,48 @@ async fn update_note(
     use backend::schema::notes::dsl::*;
     let mut connection = pool.get().unwrap();
 
-    let existing_note = notes
+    let existing_note = match notes
         .filter(short_url.eq(&request.short_url))
         .select(Note::as_select())
-        .first(&mut connection);
+        .first::<Note>(&mut connection)
+    {
+        Ok(n) => n,
+        Err(DieselError::NotFound) => {
+            return HttpResponse::NotFound().json(serde_json::json!({
+                "error": "Note not found"
+            }));
+        }
+        Err(e) => {
+            log::error!("Failed to fetch note: {}", e);
+            return HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Failed to fetch note"
+            }));
+        }
+    };
 
-    if existing_note.is_err() {
-        return HttpResponse::NotFound().json(serde_json::json!({
-            "error": "Note not found"
-        }));
+    // ---------- versioning ----------
+    use backend::models::NewNoteVersion;
+    use backend::schema::note_versions::dsl as nv;
+
+    // Determine next version number
+    let last_version: i32 = nv::note_versions
+        .filter(nv::note_id.eq(existing_note.id))
+        .select(diesel::dsl::max(nv::version))
+        .first::<Option<i32>>(&mut connection)
+        .unwrap_or(Some(0))
+        .unwrap_or(0);
+
+    let new_version = NewNoteVersion {
+        note_id: existing_note.id,
+        version: last_version + 1,
+        content: existing_note.content.clone(), // store previous content
+    };
+
+    if let Err(e) = diesel::insert_into(nv::note_versions)
+        .values(&new_version)
+        .execute(&mut connection)
+    {
+        log::error!("Failed to insert note version: {}", e);
     }
 
     match diesel::update(notes)
@@ -318,6 +352,56 @@ async fn get_threads(pool: web::Data<DbPool>, parent_id_path: web::Path<i32>) ->
             log::error!("Failed to get threads: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "Failed to get threads"
+            }))
+        }
+    }
+}
+
+async fn get_versions(pool: web::Data<DbPool>, short_url_path: web::Path<String>) -> HttpResponse {
+    use backend::schema::note_versions::dsl as nv;
+    use backend::schema::notes::dsl as n;
+    let mut connection = match pool.get() {
+        Ok(conn) => conn,
+        Err(e) => {
+            log::error!("Failed to get database connection: {}", e);
+            return HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Database connection error"
+            }));
+        }
+    };
+
+    // Find the note id
+    let note = match n::notes
+        .filter(n::short_url.eq(short_url_path.into_inner()))
+        .select(n::id)
+        .first::<i32>(&mut connection)
+    {
+        Ok(id) => id,
+        Err(DieselError::NotFound) => {
+            return HttpResponse::NotFound().json(serde_json::json!({
+                "error": "Note not found"
+            }));
+        }
+        Err(e) => {
+            log::error!("Failed to fetch note id: {}", e);
+            return HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Failed to fetch note id"
+            }));
+        }
+    };
+
+    // Fetch versions ordered asc
+    match nv::note_versions
+        .filter(nv::note_id.eq(note))
+        .order(nv::version.asc())
+        .select((nv::version, nv::content, nv::created_at))
+        .load::<(i32, String, chrono::DateTime<Utc>)>(&mut connection)
+    {
+        Ok(list) => HttpResponse::Ok().json(list),
+        Err(e) => {
+            log::error!("Failed to fetch versions: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Failed to fetch versions"
             }))
         }
     }
