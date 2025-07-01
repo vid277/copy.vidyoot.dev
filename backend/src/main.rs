@@ -79,7 +79,8 @@ async fn main() -> std::io::Result<()> {
                     .route("/create", web::post().to(create_note))
                     .route("/check/{short_url}", web::get().to(check_url_availability))
                     .route("/{short_url}", web::get().to(get_note))
-                    .route("/{short_url}", web::put().to(update_note)),
+                    .route("/{short_url}", web::put().to(update_note))
+                    .route("/threads/{parent_id}", web::get().to(get_threads)),
             )
     })
     .bind("0.0.0.0:8080")?
@@ -121,6 +122,7 @@ pub struct RequestCreateNote {
     pub short_url: String,
     pub content: String,
     pub expires_at: Option<String>,
+    pub parent_id: Option<i32>,
 }
 
 async fn get_note(pool: web::Data<DbPool>, short_url_path: web::Path<String>) -> HttpResponse {
@@ -190,6 +192,7 @@ async fn create_note(
         short_url: request.short_url.clone(),
         content: request.content.clone(),
         expires_at: expires_at_time,
+        parent_id: request.parent_id,
     };
 
     match diesel::insert_into(notes)
@@ -287,6 +290,34 @@ async fn check_url_availability(
             log::error!("Failed to check URL availability: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "Failed to check URL availability"
+            }))
+        }
+    }
+}
+
+async fn get_threads(pool: web::Data<DbPool>, parent_id_path: web::Path<i32>) -> HttpResponse {
+    use backend::schema::notes::dsl::*;
+    let mut connection = match pool.get() {
+        Ok(conn) => conn,
+        Err(e) => {
+            log::error!("Failed to get database connection: {}", e);
+            return HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Database connection error"
+            }));
+        }
+    };
+
+    match notes
+        .filter(parent_id.eq(Some(parent_id_path.into_inner())))
+        .order(created_at.asc())
+        .select(Note::as_select())
+        .load::<Note>(&mut connection)
+    {
+        Ok(thread_notes) => HttpResponse::Ok().json(thread_notes),
+        Err(e) => {
+            log::error!("Failed to get threads: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Failed to get threads"
             }))
         }
     }

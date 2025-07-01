@@ -7,5 +7,6 @@ diesel::table! {
         content -> Text,
         created_at -> Timestamptz,
         expires_at -> Nullable<Timestamptz>,
+        parent_id -> Nullable<Int4>,
     }
 }

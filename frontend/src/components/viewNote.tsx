@@ -2,7 +2,17 @@ import { Editor } from "primereact/editor";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { CopyButton } from "./ui/copyButton";
-import { FileText, Copy, QrCode } from "lucide-react";
+import { FileText, Copy, QrCode, Plus } from "lucide-react";
+import { ReplyEditor } from "./createNote";
+
+type Note = {
+  id: number;
+  short_url: string;
+  content: string;
+  created_at: string;
+  expires_at: string | null;
+  parent_id: number | null;
+};
 
 const EditorComponent = () => {
   const { shortUrl } = useParams();
@@ -14,6 +24,9 @@ const EditorComponent = () => {
   >(null);
   const [showQR, setShowQR] = useState(false);
   const navigate = useNavigate();
+  const [noteId, setNoteId] = useState<number | null>(null);
+  const [replies, setReplies] = useState<Note[]>([]);
+  const [showReplyEditor, setShowReplyEditor] = useState(false);
 
   const currentUrl = `${window.location.origin}/${shortUrl}`;
 
@@ -51,6 +64,15 @@ const EditorComponent = () => {
     return qrUrl;
   };
 
+  const refreshReplies = () => {
+    if (noteId !== null) {
+      fetch(`/api/threads/${noteId}`)
+        .then((res) => res.json())
+        .then((data) => setReplies(data))
+        .catch(() => setReplies([]));
+    }
+  };
+
   useEffect(() => {
     const getNote = async () => {
       if (shortUrl) {
@@ -71,6 +93,7 @@ const EditorComponent = () => {
 
           const data = await response.json();
           setText(data.content);
+          setNoteId(data.id);
         } catch (err) {
           console.error("Error fetching note:", err);
           setError(true);
@@ -83,6 +106,15 @@ const EditorComponent = () => {
 
     getNote();
   }, [shortUrl, navigate]);
+
+  useEffect(() => {
+    if (noteId !== null) {
+      fetch(`/api/threads/${noteId}`)
+        .then((res) => res.json())
+        .then((data) => setReplies(data))
+        .catch(() => setReplies([]));
+    }
+  }, [noteId]);
 
   if (loading) {
     return (
@@ -97,7 +129,7 @@ const EditorComponent = () => {
   }
 
   return (
-    <div className="flex flex-col gap-4 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12 ">
+    <div className="flex flex-col gap-4 p-9 pt-16 lg:px-8">
       <div className="flex flex-col sm:flex-row justify-center items-start sm:items-center gap-4">
         <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
           <span className="text-sm text-gray-600 break-all max-w-xs justify-center">
@@ -188,14 +220,70 @@ const EditorComponent = () => {
         </div>
       )}
 
-      <Editor
-        value={text}
-        readOnly
-        modules={{ toolbar: false }}
-        headerTemplate={<></>}
-        onTextChange={(e) => setText(e?.htmlValue || "")}
-        className="editor w-full"
-      />
+      <div className="w-full p-4 bg-transparent">
+        <Editor
+          value={text}
+          readOnly
+          modules={{ toolbar: false }}
+          headerTemplate={<></>}
+          onTextChange={(e) => setText(e?.htmlValue || "")}
+          className="editor w-full"
+        />
+      </div>
+
+      {noteId && (
+        <div className="mt-4 w-full flex flex-col items-center">
+          <h3 className="text-xl font-semibold mb-2 text-center">Replies</h3>
+          <div className="mt-4 space-y-4">
+            {replies.length === 0 && (
+              <div className="text-gray-500">No replies yet.</div>
+            )}
+            {replies.map((reply) => (
+              <div
+                key={reply.id}
+                className="relative w-[80vw] mx-auto p-4 border border-gray-300 rounded bg-white"
+              >
+                <button
+                  className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                  title="Copy reply"
+                  onClick={() => {
+                    const tempDiv = document.createElement("div");
+                    tempDiv.innerHTML = reply.content;
+                    const plainText =
+                      tempDiv.textContent || tempDiv.innerText || "";
+                    navigator.clipboard.writeText(plainText);
+                  }}
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+                <div dangerouslySetInnerHTML={{ __html: reply.content }} />
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center mt-6">
+            {!showReplyEditor && (
+              <button
+                className="flex items-center gap-1 text-sm text-gray-700 hover:text-black px-2 py-1 border border-gray-300 rounded shadow-sm bg-white"
+                onClick={() => setShowReplyEditor(true)}
+                title="Reply"
+              >
+                <Plus className="w-4 h-4" /> Reply
+              </button>
+            )}
+          </div>
+          {showReplyEditor && (
+            <div className="mt-4">
+              <ReplyEditor
+                parentId={noteId}
+                onSuccess={() => {
+                  setShowReplyEditor(false);
+                  refreshReplies();
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

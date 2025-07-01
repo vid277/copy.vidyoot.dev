@@ -95,7 +95,7 @@ const header = (
   </span>
 );
 
-const EditorComponent = () => {
+const EditorComponent = ({ parentId }: { parentId?: number } = {}) => {
   const [text, setText] = useState("");
   const [shortUrl, setShortUrl] = useState("");
   const [isEmpty, setIsEmpty] = useState(true);
@@ -183,6 +183,7 @@ const EditorComponent = () => {
           content: text,
           short_url: shortUrl,
           expires_at,
+          ...(parentId !== undefined ? { parent_id: parentId } : {}),
         }),
       });
 
@@ -274,3 +275,59 @@ const EditorComponent = () => {
 };
 
 export default EditorComponent;
+
+export function ReplyEditor({
+  parentId,
+  onSuccess,
+  placeholder = "Write a reply...",
+}: {
+  parentId: number;
+  onSuccess?: () => void;
+  placeholder?: string;
+}) {
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const sendReply = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: text,
+          short_url: Math.random().toString(36).slice(2, 10),
+          parent_id: parentId,
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to create reply");
+      setText("");
+      if (onSuccess) onSuccess();
+    } catch {
+      setError("Failed to create reply");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2 p-0 bg-transparent">
+      <Editor
+        value={text}
+        onTextChange={(e) => setText(e?.htmlValue || "")}
+        placeholder={placeholder}
+        style={{ height: 120 }}
+      />
+      {error && <div className="text-red-500 text-xs">{error}</div>}
+      <button
+        onClick={sendReply}
+        disabled={loading || !text.trim()}
+        className="self-end bg-black text-white px-3 py-1 rounded disabled:opacity-50"
+      >
+        {loading ? "Posting..." : "Reply"}
+      </button>
+    </div>
+  );
+}
