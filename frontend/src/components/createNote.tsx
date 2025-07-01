@@ -269,12 +269,11 @@ const EditorComponent = ({
     return "";
   };
 
-  // Helper to persist a new version
   const saveVersion = (html: string) => {
     if (!isEditMode || !existingShortUrl) return;
     const key = `notes_app_versions_${existingShortUrl}`;
     setVersions((prev) => {
-      if (prev[prev.length - 1] === html) return prev; // no change
+      if (prev[prev.length - 1] === html) return prev;
       const updated = [...prev, html];
       localStorage.setItem(key, JSON.stringify(updated));
       return updated;

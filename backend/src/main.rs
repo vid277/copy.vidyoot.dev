@@ -250,11 +250,9 @@ async fn update_note(
         }
     };
 
-    // ---------- versioning ----------
     use backend::models::NewNoteVersion;
     use backend::schema::note_versions::dsl as nv;
 
-    // Determine next version number
     let last_version: i32 = nv::note_versions
         .filter(nv::note_id.eq(existing_note.id))
         .select(diesel::dsl::max(nv::version))
@@ -265,7 +263,7 @@ async fn update_note(
     let new_version = NewNoteVersion {
         note_id: existing_note.id,
         version: last_version + 1,
-        content: existing_note.content.clone(), // store previous content
+        content: existing_note.content.clone(),
     };
 
     if let Err(e) = diesel::insert_into(nv::note_versions)
@@ -370,7 +368,6 @@ async fn get_versions(pool: web::Data<DbPool>, short_url_path: web::Path<String>
         }
     };
 
-    // Find the note id
     let note = match n::notes
         .filter(n::short_url.eq(short_url_path.into_inner()))
         .select(n::id)
@@ -390,7 +387,6 @@ async fn get_versions(pool: web::Data<DbPool>, short_url_path: web::Path<String>
         }
     };
 
-    // Fetch versions ordered asc
     match nv::note_versions
         .filter(nv::note_id.eq(note))
         .order(nv::version.asc())

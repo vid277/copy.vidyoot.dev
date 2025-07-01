@@ -2,7 +2,15 @@ import { Editor } from "primereact/editor";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { CopyButton } from "./ui/copyButton";
-import { FileText, Copy, QrCode, Plus, Pencil, History } from "lucide-react";
+import {
+  FileText,
+  Copy,
+  QrCode,
+  Plus,
+  Pencil,
+  History,
+  RotateCcw,
+} from "lucide-react";
 import CreateNoteEditor, { ReplyEditor } from "./createNote";
 import ParticleButton from "./submit";
 import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
@@ -121,6 +129,11 @@ const EditorComponent = () => {
   const [showReplyEditor, setShowReplyEditor] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
   const [versions, setVersions] = useState<string[]>([]);
+  const [rawContent, setRawContent] = useState<string>("");
+  const [selectedVersionIdx, setSelectedVersionIdx] = useState<number | null>(
+    null,
+  );
+  const [versionsOpen, setVersionsOpen] = useState<boolean>(false);
 
   const currentUrl = `${window.location.origin}/${shortUrl}`;
 
@@ -167,6 +180,8 @@ const EditorComponent = () => {
     }
   };
 
+  const cleanHtml = (raw: string) => parseReplyContent(raw).html;
+
   useEffect(() => {
     const getNote = async () => {
       if (shortUrl) {
@@ -186,6 +201,7 @@ const EditorComponent = () => {
           }
 
           const data = await response.json();
+          setRawContent(data.content);
           const parsed = parseReplyContent(data.content);
           setText(parsed.html);
           const identity = getUserIdentity();
@@ -307,7 +323,7 @@ const EditorComponent = () => {
 
           <div className="relative flex gap-2">
             {versions.length > 0 && (
-              <Popover>
+              <Popover open={versionsOpen} onOpenChange={setVersionsOpen}>
                 <PopoverTrigger asChild>
                   <button
                     className="bg-white text-sm transition-all duration-200 hover:scale-110 active:translate-y-0.5 active:shadow-sm border-1 border-gray-300 px-3 py-2 focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-gray-100 rounded-md flex items-center gap-2"
@@ -317,26 +333,72 @@ const EditorComponent = () => {
                     <span className="text-xs">Versions</span>
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-32 p-2 flex flex-col gap-1 bg-white">
+                <PopoverContent className="w-32 p-2 flex flex-col gap-1 bg-white border-1 border-gray-300 rounded-md">
                   {versions.map((_, idx) => (
                     <button
                       key={idx}
                       className="px-2 py-1 text-left text-sm rounded hover:bg-gray-100"
                       onClick={() => {
-                        const key = `notes_app_versions_${shortUrl}`;
-                        const stored = localStorage.getItem(key);
-                        if (!stored) return;
-                        try {
-                          const arr: string[] = JSON.parse(stored);
-                          setText(parseReplyContent(arr[idx]).html);
-                        } catch {
-                          // ignore
-                        }
+                        const selectedRaw = versions[idx];
+                        setSelectedVersionIdx(idx);
+                        setText(parseReplyContent(selectedRaw).html);
                       }}
                     >
                       {`Version ${idx + 1}`}
                     </button>
                   ))}
+                  {selectedVersionIdx !== null &&
+                    cleanHtml(versions[selectedVersionIdx]) !==
+                      cleanHtml(rawContent) && (
+                      <button
+                        className="bg-white text-sm transition-all duration-200 hover:scale-110 active:translate-y-0.5 active:shadow-sm border-1 border-gray-300 px-3 py-2 focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-gray-100 rounded-md flex items-center gap-2"
+                        title="Revert to this version"
+                        onClick={async () => {
+                          if (selectedVersionIdx === null) return;
+                          const selectedRaw = versions[selectedVersionIdx];
+                          try {
+                            await fetch(`/api/${shortUrl}`, {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                short_url: shortUrl,
+                                content: selectedRaw,
+                              }),
+                            });
+
+                            const key = `notes_app_versions_${shortUrl}`;
+                            const stored = localStorage.getItem(key);
+                            let arr: string[] = stored
+                              ? (() => {
+                                  try {
+                                    return JSON.parse(stored);
+                                  } catch {
+                                    return [];
+                                  }
+                                })()
+                              : [];
+                            if (
+                              rawContent &&
+                              cleanHtml(rawContent) !== cleanHtml(selectedRaw)
+                            ) {
+                              arr = [...arr, rawContent];
+                            }
+                            localStorage.setItem(key, JSON.stringify(arr));
+                            setVersions(arr);
+
+                            setRawContent(selectedRaw);
+                            setText(parseReplyContent(selectedRaw).html);
+                            setSelectedVersionIdx(null);
+                            setVersionsOpen(false);
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }}
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        <span className="text-xs">Revert</span>
+                      </button>
+                    )}
                 </PopoverContent>
               </Popover>
             )}
