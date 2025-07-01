@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, type RefObject } from "react";
+import type { ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +9,7 @@ interface ParticleButtonProps {
   onSuccess?: () => void;
   successDuration?: number;
   enabled?: boolean;
+  children?: ReactNode;
 }
 
 function SuccessParticles({
@@ -53,6 +55,7 @@ export default function ParticleButton({
   onSuccess,
   successDuration = 1000,
   enabled = true,
+  children,
 }: ParticleButtonProps) {
   const [showParticles, setShowParticles] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -83,7 +86,8 @@ export default function ParticleButton({
         )}
         disabled={!enabled}
       >
-        {enabled ? "Create Note" : "Please enter a valid URL path"}
+        {children ??
+          (enabled ? "Create Note" : "Please enter a valid URL path")}
       </button>
     </>
   );

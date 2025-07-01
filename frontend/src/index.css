@@ -32,3 +32,9 @@ h1 {
   color: #213547;
   background-color: #ffffff;
 }
+
+.reply-quill .ql-container {
+  min-height: 100px !important;
+  max-height: 300px !important;
+  height: 100px !important;
+}

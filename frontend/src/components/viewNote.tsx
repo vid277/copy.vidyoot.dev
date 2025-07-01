@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router";
 import { CopyButton } from "./ui/copyButton";
 import { FileText, Copy, QrCode, Plus } from "lucide-react";
 import { ReplyEditor } from "./createNote";
+import ParticleButton from "./submit";
 
 type Note = {
   id: number;
@@ -239,10 +240,7 @@ const EditorComponent = () => {
               <div className="text-gray-500">No replies yet.</div>
             )}
             {replies.map((reply) => (
-              <div
-                key={reply.id}
-                className="relative w-[80vw] mx-auto p-4 border border-gray-300 rounded bg-white"
-              >
+              <div key={reply.id}>
                 <button
                   className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
                   title="Copy reply"
@@ -256,19 +254,32 @@ const EditorComponent = () => {
                 >
                   <Copy className="w-4 h-4" />
                 </button>
-                <div dangerouslySetInnerHTML={{ __html: reply.content }} />
+                <Editor
+                  value={reply.content}
+                  readOnly
+                  modules={{ toolbar: false }}
+                  headerTemplate={<></>}
+                  className="reply-quill"
+                  style={{
+                    minHeight: 0,
+                    maxHeight: "none",
+                    height: "min-content",
+                  }}
+                />
               </div>
             ))}
           </div>
           <div className="flex items-center mt-6">
             {!showReplyEditor && (
-              <button
-                className="flex items-center gap-1 text-sm text-gray-700 hover:text-black px-2 py-1 border border-gray-300 rounded shadow-sm bg-white"
-                onClick={() => setShowReplyEditor(true)}
-                title="Reply"
-              >
-                <Plus className="w-4 h-4" /> Reply
-              </button>
+              <ParticleButton
+                onSuccess={() => setShowReplyEditor(true)}
+                enabled={true}
+                label={
+                  <span className="flex items-center gap-1">
+                    <Plus className="w-4 h-4" /> Reply
+                  </span>
+                }
+              />
             )}
           </div>
           {showReplyEditor && (
