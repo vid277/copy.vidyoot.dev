@@ -1,8 +1,11 @@
 services:
   app:
+    image: vidyootsenthil/notes:latest
+    platform: linux/amd64
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: notes_app
     ports:
       - "8080:8080"
     env_file:
